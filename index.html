@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<title>SP-OB-Quiz – für echte Booner!</title>
+<!-- Required meta tags -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+<style>
+.container{
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 2rem;
+	margin-bottom: 2rem;
+	max-width: 832px;
+}
+body{
+	background-color: #800000;
+}
+.option, button{
+	cursor:pointer;
+}
+#endtext{
+	font-weight: bold;
+}
+.card-img-top{
+	max-width: 100%;
+	max-height: 100%;
+}
+</style>
+</head>
+<body>
+
+<audio id="ahhh">
+	<source src="sound/ahhh.mp3" type="audio/mpeg">
+</audio>
+<audio id="fantastic">
+	<source src="sound/fantastic.mp3" type="audio/mpeg">
+</audio>
+<audio id="great">
+	<source src="sound/great.mp3" type="audio/mpeg">
+</audio>
+<audio id="hmmm">
+	<source src="sound/hmmm.mp3" type="audio/mpeg">
+</audio>
+<audio id="sad">
+	<source src="sound/sad.mp3" type="audio/mpeg">
+</audio>
+
+<div class="modal fade" id="resultmodal">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Das SP ist kein Parlament</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Glückwunsch! Du hast es überlebt.</p>
+        
+        <ul class="list-unstyled">
+        <li>Korrekt: <span id="modalStatCorrect" class="badge badge-success">-</span></li>
+        <li>Falsch: <span id="modalStatFalse" class="badge badge-danger">-</span></li>
+        </ul>
+        
+        <p id="endtext"></p>
+        
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal" onclick="reset()">Nochmal!</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+	<div class="card" style="max-width: 802px;">
+		<img class="card-img-top" src="img/header.png" alt="Card image cap">
+		<div class="card-block" id="startbutton">
+		<button onclick="start()" class="btn btn-secondary btn-lg btn-block">Start</button>
+		</div>
+		<div class="card-block game">
+			<h4 class="card-title" id="topic"></h4>
+			<p class="card-text" id="question"></p>
+			
+			<hr>
+			
+			<i>Wer hat's gefragt?</i>
+		</div>
+		<ul class="list-group list-group-flush game" id="answerlist">
+		</ul>
+		<div class="card-block game">
+			Frage <span id="current_question">-</span>/<span id="question_count">-</span> · Korrekt: <span id="statCorrect" class="badge badge-success">-</span> · Falsch: <span id="statFalse" class="badge badge-danger">-</span> · <button class="btn btn-sm btn-link" data-toggle="modal" data-target="#resultmodal">kein Bock mehr, Altah!</button>
+		</div>
+	</div>
+</div>
+
+<!-- jQuery first, then Tether, then Bootstrap JS. -->
+<script src="js/jquery.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/questions.js"></script>
+<script>
+var current_question = null;
+var counter_correct = 0;
+var counter_false = 0;
+var already_counted = false;
+var no_more_guesses = false;
+var current_question_nr = -1;
+var sounds_positive = ["ahhh", "great", "fantastic"];
+var sounds_negative = ["hmmm", "sad"];
+
+reset();
+
+function reset(){
+	$('.game').hide();
+	$('#startbutton').show();
+}
+
+
+
+function start(){
+	current_question = null;
+	counter_correct = 0;
+	counter_false = 0;
+	already_counted = false;
+	no_more_guesses = false;
+	current_question_nr = -1;
+	shuffleArray(questions);
+	updateStats();
+	nextQuestion();
+	$('#startbutton').hide(400, function(){$('.game').show(400);});
+	
+}
+
+function displayQuestion(q){
+	current_question = q;
+	//$('#title').text(q.title);
+	$('#topic').fadeOut(400, function(){$(this).text(topics[q.topic]);})
+		.fadeIn(400);
+	$('#question').fadeOut(400, function(){$(this).text("»"+q.question+"«");})
+		.fadeIn(400);
+	fillAnswers();
+	already_counted = false;
+}
+
+function fillAnswers(){
+	$('#answerlist').fadeOut(400, function(){
+		$(this).html('');
+		var allkeys = Object.keys(options);
+		shuffleArray(allkeys);
+		for(k of allkeys){
+			$(this).append('<li class="list-group-item option" onclick="guess('+k+')" id="'+k+'">'+options[k]+'</li>');
+		}
+	})
+	.fadeIn(400);
+	
+}
+
+function guess(i){
+	if(!no_more_guesses){
+		let correct = false;
+		if(i == current_question.answer){
+			correct = true;
+		}
+		if(correct){
+			no_more_guesses = true;
+			$('#'+i).addClass('bg-success text-white');
+			setTimeout(function(){
+				nextQuestion();
+			}, 2000);
+		} else {
+			$('#'+i).addClass('bg-danger text-white');
+		}
+		if(!already_counted){
+			if(correct){
+				counter_correct++;
+				var sound = sounds_positive[Math.floor(Math.random() * sounds_positive.length)];
+				document.getElementById(sound).play();
+			} else {
+				counter_false++;
+				var sound = sounds_negative[Math.floor(Math.random() * sounds_negative.length)];
+				document.getElementById(sound).play();
+			}
+			already_counted = true;
+		}
+		updateStats();
+	}
+}
+
+function nextQuestion(){
+	current_question_nr++;
+	$('#current_question').text(current_question_nr+1);
+	$('#question_count').text(questions.length);
+	if(current_question_nr < questions.length){
+		displayQuestion(questions[current_question_nr]);
+		no_more_guesses = false;
+	} else {
+		$('#resultmodal').modal('show');
+	}
+}
+
+
+function updateStats(){
+	$('#statCorrect').text(counter_correct);
+	$('#statFalse').text(counter_false);
+}
+
+/**
+ * Randomize array element order in-place.
+ * Using Durstenfeld shuffle algorithm.
+ */
+function shuffleArray(array) {
+	for (var i = array.length - 1; i > 0; i--) {
+		var j = Math.floor(Math.random() * (i + 1));
+		var temp = array[i];
+		array[i] = array[j];
+		array[j] = temp;
+	}
+	return array;
+}
+
+$('#resultmodal').on('show.bs.modal', function (event) {
+  var modal = $(this);
+  modal.find('.modal-body #modalStatCorrect').text(counter_correct);
+  modal.find('.modal-body #modalStatFalse').text(counter_false);
+  if(counter_correct + counter_false < 5){
+	modal.find('.modal-body #endtext').html("Du hast es ja nicht einmal versucht.");
+	document.getElementById('sad').play();
+  }else if(counter_correct < counter_false){
+	modal.find('.modal-body #endtext').html("Das üben wir aber nochmal, gell.");
+	let sound = sounds_negative[Math.floor(Math.random() * sounds_negative.length)];
+	document.getElementById(sound).play();
+  } else if (counter_correct > 35){
+	modal.find('.modal-body #endtext').html("Verdächtig gut.");
+	document.getElementById('fatastic').play();
+  } else {
+	modal.find('.modal-body #endtext').html("Scho recht.");
+	document.getElementById('ahhh').play();
+  }
+})
+
+</script>
+</body>
+</html>
